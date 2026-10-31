@@ -1,3 +1,4 @@
+import json
 import socket
 
 host = '127.0.0.1'
@@ -14,14 +15,43 @@ while True:
     if len(splitting) >= 2:
         path = splitting[1]
         method = splitting[0]
-
+        http_info = {
+            'method': method,
+            'path': path,
+            'headers': {},
+            'request-body': None,
+            'Content-Type': 'text/html',
+            'Connection': 'close',
+            'id': id,
+            # 'name': name,
+            'status' : 'success',
+        }
         if method == 'GET':
-            conn.send(b'HTTP/1.1 200 OK\n')
+            path = path.lstrip('/')
+            if  path == '' or path == 'index.html':
+                try:
+                    with open(path, 'rb') as file:
+                        content = file.read()
+                    response = f'HTTP/1.1 200 OK\n Content-Type: text/html '.encode('utf-8') + content
+                    conn.sendall(response)
+                    conn.close()
+                except FileNotFoundError:
+                    conn.sendall(b'HTTP/1.1 404 Not Found\n')
+                    conn.send(b'Connection: close\n')
+                    conn.close()
         elif method == 'POST':
-            conn.send(b'HTTP/1.1 201 CREATED\n')
-            conn.send(b'Content-Type: text/html\n')
-            conn.send(b'Connection: close\n')
-            conn.send(b'\n')
+            http_info['request-body'] = data
+            if path == '/json':
+                try:
+                    content = json.dumps(http_info['request-body'])
+                    response = f'HTTP/1.1  201 CREATED\n Content-Type: application/json\n'.encode('utf-8') + content.encode('utf-8')
+                    conn.sendall(response)
+                    conn.close()
+                except FileNotFoundError:
+                    conn.sendall(b'HTTP/1.1 404 Not Found\n')
+                    conn.send(b'Connection: close\n')
+                    conn.close()
+
 
 
 
